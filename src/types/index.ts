@@ -1,6 +1,7 @@
 export interface User {
   address: string;
   isConnected: boolean;
+  role: 'claimant' | 'defendant';
 }
 
 export interface Policy {
@@ -15,10 +16,11 @@ export interface Evidence {
   id: string;
   title: string;
   description: string;
-  submittedBy: 'opposer' | 'defender';
+  submittedBy: 'claimant' | 'defendant';
   submittedAt: Date;
   isFactChecked: boolean;
   attachments?: string[];
+  images?: File[];
 }
 
 export interface Message {

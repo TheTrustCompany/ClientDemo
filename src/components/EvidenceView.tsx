@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { FileText, Shield, User, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { FileText, Shield, User, Clock, CheckCircle, AlertCircle, Plus, Upload, X } from 'lucide-react';
 import { useEvidence } from '../hooks/useEvidence';
+import { useAuth } from '../contexts/AuthContext';
 import type { Evidence } from '../types';
 
 const EvidenceView: React.FC = () => {
+  const { user } = useAuth();
   const { 
     isLoading, 
     error, 
-    opposerEvidence, 
-    defenderEvidence, 
+    claimantEvidence, 
+    defendantEvidence, 
     addEvidence 
   } = useEvidence();
   
-  const [activeTab, setActiveTab] = useState<'opposer' | 'defender'>('opposer');
+  const [activeTab, setActiveTab] = useState<'claimant' | 'defendant'>('claimant');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [newEvidence, setNewEvidence] = useState({
     title: '',
     description: '',
-    submittedBy: 'opposer' as 'opposer' | 'defender',
+    submittedBy: user?.role || 'claimant' as 'claimant' | 'defendant',
   });
 
   const formatDate = (date: Date) => {
@@ -30,13 +33,28 @@ const EvidenceView: React.FC = () => {
     });
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    setSelectedImages(prev => [...prev, ...imageFiles]);
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddEvidence = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEvidence.title.trim() || !newEvidence.description.trim()) return;
 
     try {
-      await addEvidence(newEvidence);
-      setNewEvidence({ title: '', description: '', submittedBy: 'opposer' });
+      const evidenceWithImages = {
+        ...newEvidence,
+        images: selectedImages
+      };
+      await addEvidence(evidenceWithImages);
+      setNewEvidence({ title: '', description: '', submittedBy: user?.role || 'claimant' });
+      setSelectedImages([]);
       setShowAddForm(false);
     } catch (err) {
       console.error('Failed to add evidence:', err);
@@ -100,6 +118,24 @@ const EvidenceView: React.FC = () => {
                     </ul>
                   </div>
                 )}
+
+                {evidence.images && evidence.images.length > 0 && (
+                  <div className="evidence-images">
+                    <strong>Images:</strong>
+                    <div className="evidence-image-grid">
+                      {evidence.images.map((image, index) => (
+                        <div key={index} className="evidence-image-item">
+                          <img
+                            src={URL.createObjectURL(image)}
+                            alt={`Evidence image ${index + 1}`}
+                            className="evidence-image"
+                          />
+                          <span className="evidence-image-name">{image.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -152,33 +188,11 @@ const EvidenceView: React.FC = () => {
             
             <div className="form-group">
               <label>Submitted By:</label>
-              <div className="radio-group">
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    value="opposer"
-                    checked={newEvidence.submittedBy === 'opposer'}
-                    onChange={(e) => setNewEvidence(prev => ({ 
-                      ...prev, 
-                      submittedBy: e.target.value as 'opposer' 
-                    }))}
-                  />
-                  <User className="radio-icon" />
-                  <span>Opposer</span>
-                </label>
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    value="defender"
-                    checked={newEvidence.submittedBy === 'defender'}
-                    onChange={(e) => setNewEvidence(prev => ({ 
-                      ...prev, 
-                      submittedBy: e.target.value as 'defender' 
-                    }))}
-                  />
-                  <Shield className="radio-icon" />
-                  <span>Defender</span>
-                </label>
+              <div className="user-role-display">
+                <User className="role-icon" />
+                <span className="role-text">
+                  {user?.role === 'claimant' ? 'Claimant' : 'Defendant'} (You)
+                </span>
               </div>
             </div>
 
@@ -206,6 +220,51 @@ const EvidenceView: React.FC = () => {
               />
             </div>
 
+            <div className="form-group">
+              <label htmlFor="evidence-images">Upload Images (Optional):</label>
+              <div className="image-upload-section">
+                <input
+                  id="evidence-images"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="image-input"
+                />
+                <label htmlFor="evidence-images" className="upload-button">
+                  <Upload className="upload-icon" />
+                  <span>Choose Images</span>
+                </label>
+                
+                {selectedImages.length > 0 && (
+                  <div className="selected-images">
+                    <p className="images-label">{selectedImages.length} image(s) selected:</p>
+                    <div className="image-preview-list">
+                      {selectedImages.map((file, index) => (
+                        <div key={index} className="image-preview-item">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index + 1}`}
+                            className="image-preview"
+                          />
+                          <div className="image-info">
+                            <span className="image-name">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="remove-image-button"
+                            >
+                              <X className="remove-icon" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="form-actions">
               <button type="button" onClick={() => setShowAddForm(false)} className="cancel-button">
                 Cancel
@@ -221,30 +280,30 @@ const EvidenceView: React.FC = () => {
 
       <div className="evidence-tabs">
         <button
-          className={`tab-button ${activeTab === 'opposer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('opposer')}
+          className={`tab-button ${activeTab === 'claimant' ? 'active' : ''}`}
+          onClick={() => setActiveTab('claimant')}
         >
           <User className="tab-icon" />
-          Opposer Evidence
+          Claimant Evidence
         </button>
         <button
-          className={`tab-button ${activeTab === 'defender' ? 'active' : ''}`}
-          onClick={() => setActiveTab('defender')}
+          className={`tab-button ${activeTab === 'defendant' ? 'active' : ''}`}
+          onClick={() => setActiveTab('defendant')}
         >
           <Shield className="tab-icon" />
-          Defender Evidence
+          Defendant Evidence
         </button>
       </div>
 
       <div className="evidence-content">
-        {activeTab === 'opposer' && renderEvidenceList(
-          opposerEvidence, 
-          'Opposer Evidence', 
+        {activeTab === 'claimant' && renderEvidenceList(
+          claimantEvidence, 
+          'Claimant Evidence', 
           <User className="section-icon" />
         )}
-        {activeTab === 'defender' && renderEvidenceList(
-          defenderEvidence, 
-          'Defender Evidence', 
+        {activeTab === 'defendant' && renderEvidenceList(
+          defendantEvidence, 
+          'Defendant Evidence', 
           <Shield className="section-icon" />
         )}
       </div>

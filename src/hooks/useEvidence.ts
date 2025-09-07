@@ -7,7 +7,7 @@ const mockEvidence: Evidence[] = [
     id: '1',
     title: 'Service Agreement Contract',
     description: 'Original signed contract outlining service terms and expectations.',
-    submittedBy: 'opposer',
+    submittedBy: 'claimant',
     submittedAt: new Date('2024-01-10'),
     isFactChecked: true,
     attachments: ['contract.pdf'],
@@ -16,7 +16,7 @@ const mockEvidence: Evidence[] = [
     id: '2',
     title: 'Payment Receipt',
     description: 'Proof of payment for services rendered on January 5th, 2024.',
-    submittedBy: 'opposer',
+    submittedBy: 'claimant',
     submittedAt: new Date('2024-01-12'),
     isFactChecked: true,
     attachments: ['receipt.pdf'],
@@ -25,7 +25,7 @@ const mockEvidence: Evidence[] = [
     id: '3',
     title: 'Service Delivery Confirmation',
     description: 'Email confirmation showing successful completion of requested services.',
-    submittedBy: 'defender',
+    submittedBy: 'defendant',
     submittedAt: new Date('2024-01-14'),
     isFactChecked: true,
     attachments: ['confirmation.pdf'],
@@ -76,7 +76,7 @@ export const useEvidence = () => {
     }
   };
 
-  const getEvidenceByType = (submittedBy: 'opposer' | 'defender') => {
+  const getEvidenceByType = (submittedBy: 'claimant' | 'defendant') => {
     return evidence.filter(e => e.submittedBy === submittedBy);
   };
 
@@ -86,7 +86,7 @@ export const useEvidence = () => {
     error,
     addEvidence,
     getEvidenceByType,
-    opposerEvidence: getEvidenceByType('opposer'),
-    defenderEvidence: getEvidenceByType('defender'),
+    claimantEvidence: getEvidenceByType('claimant'),
+    defendantEvidence: getEvidenceByType('defendant'),
   };
 };

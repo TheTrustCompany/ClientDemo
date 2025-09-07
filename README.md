@@ -31,7 +31,7 @@ A demo chat application built with React, TypeScript, and Vite that demonstrates
 - **Expandable Content**: Collapsible policy details for better UX
 
 ### Evidence Handling
-- **Dual-sided Evidence**: Support for both opposer and defender evidence
+- **Dual-sided Evidence**: Support for both claimant and defendant evidence
 - **Fact-checking Status**: Track verification status of submitted evidence
 - **Evidence Categories**: Organized evidence submission and viewing
 - **Attachment Support**: Support for evidence attachments (mocked for demo)
@@ -112,7 +112,7 @@ npm run dev
    - Type your message and click send
 4. **View Policies**: Review the agreed-upon policies and guidelines
 5. **Manage Evidence**: 
-   - View evidence from both opposer and defender
+   - View evidence from both claimant and defendant
    - Submit new evidence using the "Add Evidence" button
 
 ## API Integration

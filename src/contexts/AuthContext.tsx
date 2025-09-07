@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser({
         address,
         isConnected: true,
+        role: 'claimant', // In a real app, this would be determined by backend/contract
       });
 
       // Store connection state in localStorage for persistence
@@ -82,6 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser({
               address: savedAddress,
               isConnected: true,
+              role: 'claimant', // In a real app, this would be determined by backend/contract
             });
           } else {
             // Clear stale data
@@ -109,6 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser({
             address: accounts[0],
             isConnected: true,
+            role: 'claimant', // In a real app, this would be determined by backend/contract
           });
           localStorage.setItem('wallet_address', accounts[0]);
         }
