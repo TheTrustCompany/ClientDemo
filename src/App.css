@@ -1290,6 +1290,29 @@ p {
   position: relative;
 }
 
+.evidence-header .header-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.evidence-header .header-content p {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+.evidence-header .header-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #7c3aed;
+  margin-right: 1.5rem;
+}
+
 .evidence-header::before {
   content: '';
   position: absolute;
