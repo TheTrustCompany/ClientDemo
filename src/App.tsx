@@ -38,7 +38,6 @@ const AppContent: React.FC = () => {
             <Scale className="app-logo" />
             <div className="app-title">
               <h1>Dispute Resolution Platform</h1>
-              <p>Blockchain-powered evidence and policy management</p>
             </div>
           </div>
           <div className="header-right">
@@ -52,33 +51,35 @@ const AppContent: React.FC = () => {
         </div>
       </header>
 
-      <nav className="app-navigation">
-        <button
-          className={`nav-button ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
-        >
-          <MessageSquare className="nav-icon" />
-          <span>Chat</span>
-        </button>
-        <button
-          className={`nav-button ${activeTab === 'policies' ? 'active' : ''}`}
-          onClick={() => setActiveTab('policies')}
-        >
-          <FileText className="nav-icon" />
-          <span>Policies</span>
-        </button>
-        <button
-          className={`nav-button ${activeTab === 'evidence' ? 'active' : ''}`}
-          onClick={() => setActiveTab('evidence')}
-        >
-          <Scale className="nav-icon" />
-          <span>Evidence</span>
-        </button>
-      </nav>
+      <div className="app-body">
+        <nav className="app-sidebar">
+          <button
+            className={`nav-button ${activeTab === 'chat' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chat')}
+          >
+            <MessageSquare className="nav-icon" />
+            <span>Chat</span>
+          </button>
+          <button
+            className={`nav-button ${activeTab === 'policies' ? 'active' : ''}`}
+            onClick={() => setActiveTab('policies')}
+          >
+            <FileText className="nav-icon" />
+            <span>Policies</span>
+          </button>
+          <button
+            className={`nav-button ${activeTab === 'evidence' ? 'active' : ''}`}
+            onClick={() => setActiveTab('evidence')}
+          >
+            <Scale className="nav-icon" />
+            <span>Evidence</span>
+          </button>
+        </nav>
 
-      <main className="app-main">
-        {renderTabContent()}
-      </main>
+        <main className="app-main">
+          {renderTabContent()}
+        </main>
+      </div>
     </div>
   );
 };

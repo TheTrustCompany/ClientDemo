@@ -192,10 +192,6 @@ export const useChat = () => {
                   // Build the complete content from accumulated data
                   let streamedContent = '';
 
-                  if (accumulatedContent.message) {
-                    streamedContent += `**AI Arbitration Decision**\n\n${accumulatedContent.message}\n\n`;
-                  }
-
                   if (accumulatedContent.decision) {
                     streamedContent += `**Decision**\n${accumulatedContent.decision}\n\n`;
                   }
@@ -204,21 +200,8 @@ export const useChat = () => {
                     streamedContent += `**Detailed Reasoning**\n${accumulatedContent.reasoning}\n\n`;
                   }
 
-                  if (accumulatedContent.confidence_score !== null) {
-                    streamedContent += `**Confidence Score**\n${(accumulatedContent.confidence_score * 100).toFixed(1)}%\n\n`;
-                  }
-
-                  if (accumulatedContent.decision_type) {
-                    const decisionTypeText = accumulatedContent.decision_type === 'approve_opposer' 
-                      ? 'Complaint Upheld' 
-                      : accumulatedContent.decision_type === 'approve_defender' 
-                      ? 'Complaint Dismissed' 
-                      : 'Under Review';
-                    streamedContent += `**Status**\n${decisionTypeText}\n\n`;
-                  }
-
-                  if (accumulatedContent.decision_id) {
-                    streamedContent += `**Case ID**\n${accumulatedContent.decision_id}`;
+                  if (accumulatedContent.message) {
+                    streamedContent += `**AI Arbitration Response**\n${accumulatedContent.message}`;
                   }
 
                   // Update the system message with the complete accumulated content
