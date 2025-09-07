@@ -209,7 +209,13 @@ export const useChat = () => {
                     ...prev,
                     messages: prev.messages.map(msg => 
                       msg.id === systemMessageId 
-                        ? { ...msg, content: streamedContent.trim() || 'Processing your arbitration request...' }
+                        ? { 
+                            ...msg, 
+                            content: streamedContent.trim() || 'Processing your arbitration request...',
+                            decisionType: accumulatedContent.decision_type,
+                            decisionId: accumulatedContent.decision_id,
+                            confidenceScore: accumulatedContent.confidence_score ?? undefined
+                          }
                         : msg
                     ),
                   }));

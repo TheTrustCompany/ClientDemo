@@ -31,6 +31,9 @@ export interface Message {
   sender: string;
   evidenceRequired?: boolean;
   relatedEvidenceId?: string;
+  decisionType?: string;
+  decisionId?: string;
+  confidenceScore?: number;
 }
 
 export interface ChatState {

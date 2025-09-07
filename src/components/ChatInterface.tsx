@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, FileText, AlertTriangle, Clock, CheckCircle, Bot, User } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
+import EvidenceSubmissionForm from './EvidenceSubmissionForm';
 import type { Message } from '../types';
 
 const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
+  const [showEvidenceForm, setShowEvidenceForm] = useState(false);
+  const [evidenceFormMessageId, setEvidenceFormMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, error, sendMessage } = useChat();
 
@@ -26,6 +29,33 @@ const ChatInterface: React.FC = () => {
     } catch (err) {
       console.error('Failed to send message:', err);
     }
+  };
+
+  const handleEvidenceSubmit = async (title: string, description: string, files: File[]) => {
+    try {
+      // Create evidence message content
+      const evidenceContent = `**Evidence Submitted**\n\n**Title:** ${title}\n\n**Description:** ${description}`;
+      if (files.length > 0) {
+        const fileList = files.map(f => `- ${f.name} (${(f.size / 1024).toFixed(1)} KB)`).join('\n');
+        evidenceContent + `\n\n**Attached Files:**\n${fileList}`;
+      }
+      
+      await sendMessage(evidenceContent);
+      setShowEvidenceForm(false);
+      setEvidenceFormMessageId(null);
+    } catch (err) {
+      console.error('Failed to submit evidence:', err);
+    }
+  };
+
+  const handleEvidenceCancel = () => {
+    setShowEvidenceForm(false);
+    setEvidenceFormMessageId(null);
+  };
+
+  const handleRequestEvidence = (messageId: string) => {
+    setShowEvidenceForm(true);
+    setEvidenceFormMessageId(messageId);
   };
 
   const formatTime = (date: Date) => {
@@ -163,6 +193,33 @@ const ChatInterface: React.FC = () => {
                           <div className="streaming-indicator">
                             <Clock className="streaming-icon" />
                             <span>AI Arbiter is analyzing your case...</span>
+                          </div>
+                        )}
+                        {message.decisionType === 'request_opposer_evidence' && !isLoading && (
+                          <div className="evidence-request-action">
+                            <div className="evidence-request-notice">
+                              <FileText className="evidence-request-icon" />
+                              <div className="evidence-request-text">
+                                <h4>Additional Evidence Requested</h4>
+                                <p>The AI Arbiter requires additional evidence to make a fair decision. Please submit relevant documents or information.</p>
+                              </div>
+                            </div>
+                            {showEvidenceForm && evidenceFormMessageId === message.id ? (
+                              <EvidenceSubmissionForm
+                                onSubmit={handleEvidenceSubmit}
+                                onCancel={handleEvidenceCancel}
+                                isLoading={isLoading}
+                              />
+                            ) : (
+                              <button
+                                className="evidence-request-btn"
+                                onClick={() => handleRequestEvidence(message.id)}
+                                disabled={isLoading}
+                              >
+                                <FileText className="btn-icon" />
+                                Submit Evidence
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
