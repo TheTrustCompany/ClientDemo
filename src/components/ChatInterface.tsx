@@ -53,26 +53,68 @@ const ChatInterface: React.FC = () => {
   };
 
   const formatMessageContent = (content: string) => {
-    // Handle markdown-style formatting
+    // Handle markdown-style formatting with improved layout
     const lines = content.split('\n');
-    return lines.map((line, index) => {
+    const sections: { header?: string; content: string[] }[] = [];
+    let currentSection: { header?: string; content: string[] } = { content: [] };
+
+    lines.forEach(line => {
       if (line.startsWith('**') && line.endsWith('**')) {
-        const text = line.slice(2, -2);
-        return (
-          <div key={index} className="message-section-header">
-            {text}
-          </div>
-        );
+        // Save current section if it has content
+        if (currentSection.content.length > 0) {
+          sections.push(currentSection);
+        }
+        // Start new section
+        const header = line.slice(2, -2);
+        currentSection = { header, content: [] };
+      } else if (line.trim() !== '') {
+        currentSection.content.push(line);
+      } else if (currentSection.content.length > 0) {
+        currentSection.content.push(''); // Preserve empty lines within sections
       }
-      if (line.trim() === '') {
-        return <br key={index} />;
-      }
-      return (
-        <div key={index} className="message-line">
-          {line}
-        </div>
-      );
     });
+
+    // Add the last section
+    if (currentSection.content.length > 0 || currentSection.header) {
+      sections.push(currentSection);
+    }
+
+    const getHeaderType = (header: string) => {
+      const lowerHeader = header.toLowerCase();
+      if (lowerHeader.includes('ai arbitration decision')) return 'decision';
+      if (lowerHeader.includes('decision') || lowerHeader.includes('verdict')) return 'verdict';
+      if (lowerHeader.includes('reasoning')) return 'reasoning';
+      if (lowerHeader.includes('confidence')) return 'confidence';
+      if (lowerHeader.includes('status')) return 'status';
+      if (lowerHeader.includes('case id')) return 'case-id';
+      return undefined;
+    };
+
+    return sections.map((section, sectionIndex) => (
+      <div key={sectionIndex} className="message-section">
+        {section.header && (
+          <div 
+            className="message-section-header"
+            data-type={getHeaderType(section.header)}
+          >
+            {section.header}
+          </div>
+        )}
+        {section.content.length > 0 && (
+          <div className="message-section-content">
+            {section.content.map((line, lineIndex) => (
+              line === '' ? (
+                <br key={lineIndex} />
+              ) : (
+                <div key={lineIndex} className="message-line">
+                  {line}
+                </div>
+              )
+            ))}
+          </div>
+        )}
+      </div>
+    ));
   };
 
   return (

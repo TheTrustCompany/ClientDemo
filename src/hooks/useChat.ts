@@ -128,8 +128,16 @@ export const useChat = () => {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let streamedContent = '';
-      let isFirstChunk = true;
+      
+      // Track accumulated content for different sections
+      let accumulatedContent = {
+        message: '',
+        decision: '',
+        reasoning: '',
+        confidence_score: null as number | null,
+        decision_type: '',
+        decision_id: ''
+      };
 
       try {
         while (true) {
@@ -142,55 +150,89 @@ export const useChat = () => {
 
           for (const line of lines) {
             if (line.trim() && line.startsWith('data: ')) {
+              const dataStr = line.slice(6); // Remove 'data: ' prefix
               try {
-                const dataStr = line.slice(6); // Remove 'data: ' prefix
                 const data = JSON.parse(dataStr);
 
-                if (data.type === 'error') {
-                  throw new Error(data.message || 'Stream error');
-                }
-
+                // Check for completion signal
                 if (data.type === 'complete') {
                   setChatState(prev => ({ ...prev, isLoading: false }));
                   return userMessage;
                 }
 
-                // Handle arbitration data chunks
-                if (data.reasoning || data.decision || data.analysis) {
-                  if (isFirstChunk) {
-                    streamedContent = '';
-                    isFirstChunk = false;
-                  }
+                // Check for error
+                if (data.type === 'error') {
+                  throw new Error(data.message || 'Stream error');
+                }
 
-                  // Build the streamed content
-                  if (data.reasoning) {
-                    streamedContent += `**Reasoning:** ${data.reasoning}\n\n`;
-                  }
+                // Handle arbitration result chunks
+                if (data.arbitration_result) {
+                  const result = data.arbitration_result;
                   
-                  if (data.analysis) {
-                    streamedContent += `**Analysis:** ${data.analysis}\n\n`;
+                  // Update accumulated content with new data
+                  if (result.message) {
+                    accumulatedContent.message = result.message;
+                  }
+                  if (result.decision) {
+                    accumulatedContent.decision = result.decision;
+                  }
+                  if (result.reasoning) {
+                    accumulatedContent.reasoning = result.reasoning;
+                  }
+                  if (result.confidence_score !== undefined) {
+                    accumulatedContent.confidence_score = result.confidence_score;
+                  }
+                  if (result.decision_type) {
+                    accumulatedContent.decision_type = result.decision_type;
+                  }
+                  if (result.decision_id) {
+                    accumulatedContent.decision_id = result.decision_id;
                   }
 
-                  if (data.decision) {
-                    streamedContent += `**Decision:** ${data.decision.verdict || data.decision}\n`;
-                    if (data.decision.confidence_score) {
-                      streamedContent += `**Confidence:** ${(data.decision.confidence_score * 100).toFixed(1)}%\n`;
-                    }
-                    streamedContent += '\n';
+                  // Build the complete content from accumulated data
+                  let streamedContent = '';
+
+                  if (accumulatedContent.message) {
+                    streamedContent += `**AI Arbitration Decision**\n\n${accumulatedContent.message}\n\n`;
                   }
 
-                  // Update the system message with streamed content
+                  if (accumulatedContent.decision) {
+                    streamedContent += `**Decision**\n${accumulatedContent.decision}\n\n`;
+                  }
+
+                  if (accumulatedContent.reasoning) {
+                    streamedContent += `**Detailed Reasoning**\n${accumulatedContent.reasoning}\n\n`;
+                  }
+
+                  if (accumulatedContent.confidence_score !== null) {
+                    streamedContent += `**Confidence Score**\n${(accumulatedContent.confidence_score * 100).toFixed(1)}%\n\n`;
+                  }
+
+                  if (accumulatedContent.decision_type) {
+                    const decisionTypeText = accumulatedContent.decision_type === 'approve_opposer' 
+                      ? 'Complaint Upheld' 
+                      : accumulatedContent.decision_type === 'approve_defender' 
+                      ? 'Complaint Dismissed' 
+                      : 'Under Review';
+                    streamedContent += `**Status**\n${decisionTypeText}\n\n`;
+                  }
+
+                  if (accumulatedContent.decision_id) {
+                    streamedContent += `**Case ID**\n${accumulatedContent.decision_id}`;
+                  }
+
+                  // Update the system message with the complete accumulated content
                   setChatState(prev => ({
                     ...prev,
                     messages: prev.messages.map(msg => 
                       msg.id === systemMessageId 
-                        ? { ...msg, content: streamedContent.trim() || 'Processing...' }
+                        ? { ...msg, content: streamedContent.trim() || 'Processing your arbitration request...' }
                         : msg
                     ),
                   }));
                 }
               } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
+                console.warn('Failed to parse SSE data:', parseError, 'Raw data:', dataStr);
               }
             }
           }
@@ -199,6 +241,7 @@ export const useChat = () => {
         reader.releaseLock();
       }
 
+      // If we reach here, the stream ended without a completion signal
       setChatState(prev => ({ ...prev, isLoading: false }));
       return userMessage;
 
