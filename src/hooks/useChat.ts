@@ -1,20 +1,66 @@
 import { useState, useCallback } from 'react';
 import type { Message, ChatState } from '../types';
 
-// Helper function to analyze message content for evidence requirements
-// In a real implementation, this would be handled by AI/ML on the backend
-const analyzeMessageForEvidence = (content: string): boolean => {
-  const evidenceKeywords = [
-    'proof', 'evidence', 'document', 'contract', 'receipt', 'payment',
-    'violation', 'breach', 'damages', 'loss', 'harm', 'injury',
-    'fraud', 'deception', 'misrepresentation', 'negligence',
-    'defective', 'faulty', 'broken', 'malfunction',
-    'overcharged', 'unauthorized', 'dispute', 'claim',
-    'medical', 'invoice', 'bill', 'statement', 'record'
+// API configuration
+const API_BASE_URL = 'http://localhost:8000';
+const ARBITRATE_STREAM_ENDPOINT = `${API_BASE_URL}/arbitrate/stream`;
+
+// Helper function to create sample policy data
+const createSamplePolicyData = () => ({
+  id: crypto.randomUUID(),
+  creator_id: crypto.randomUUID(),
+  name: "Data Security and Access Control Policy",
+  description: "Policy agreed upon by both IT management and security team: All employee access to sensitive customer data must be logged and monitored. Any access to customer payment information requires explicit written approval from the Data Protection Officer (DPO) before access is granted. All access logs must be reviewed weekly by the security team. No exceptions are permitted without formal risk assessment documentation.",
+  created_at: new Date().toISOString()
+});
+
+// Helper function to create sample evidence data
+const createSampleEvidenceData = (policyId: string, submitterId: string, content: string) => ({
+  id: crypto.randomUUID(),
+  policy_id: policyId,
+  submitter_id: submitterId,
+  content,
+  created_at: new Date().toISOString()
+});
+
+// Helper function to create arbitration request
+const createArbitrationRequest = (userQuery: string) => {
+  const policy = createSamplePolicyData();
+  const opposerId = crypto.randomUUID();
+  const defenderId = policy.creator_id;
+
+  const opposerEvidences = [
+    createSampleEvidenceData(
+      policy.id,
+      opposerId,
+      "Security audit logs show that 15 employees accessed customer payment data without DPO approval."
+    ),
+    createSampleEvidenceData(
+      policy.id,
+      opposerId,
+      "Weekly security log reviews have not been conducted for 6 weeks."
+    ),
   ];
-  
-  const lowerContent = content.toLowerCase();
-  return evidenceKeywords.some(keyword => lowerContent.includes(keyword));
+
+  const defenderEvidences = [
+    createSampleEvidenceData(
+      policy.id,
+      defenderId,
+      "We have implemented a new automated logging system that captures all data access attempts."
+    ),
+    createSampleEvidenceData(
+      policy.id,
+      defenderId,
+      "Operational needs sometimes require flexible interpretation of policies."
+    ),
+  ];
+
+  return {
+    policy,
+    opposer_evidences: opposerEvidences,
+    defender_evidences: defenderEvidences,
+    user_query: userQuery
+  };
 };
 
 export const useChat = () => {
@@ -28,8 +74,8 @@ export const useChat = () => {
     try {
       setChatState(prev => ({ ...prev, isLoading: true, error: undefined }));
 
-      // Create new message (initially as information type)
-      const newMessage: Message = {
+      // Create user message
+      const userMessage: Message = {
         id: Date.now().toString(),
         type: 'information',
         content,
@@ -38,56 +84,136 @@ export const useChat = () => {
         evidenceRequired: false,
       };
 
-      // Simulate API call to determine message type and get response
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Simulate API analysis - in real implementation, this would be determined by the backend
-      const requiresEvidence = analyzeMessageForEvidence(content);
-      
-      // Update message type based on API response
-      if (requiresEvidence) {
-        newMessage.type = 'evidence';
-        newMessage.evidenceRequired = true;
-      }
-
+      // Add user message immediately
       setChatState(prev => ({
         ...prev,
-        messages: [...prev.messages, newMessage],
-        isLoading: false,
+        messages: [...prev.messages, userMessage],
       }));
 
-      // Simulate API responses based on message type
-      setTimeout(() => {
-        let responseMessage: Message;
-        
-        if (requiresEvidence) {
-          responseMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'information',
-            content: 'Thank you for your complaint. Based on your message, we\'ve identified that evidence will be required to support your case. Please submit relevant documentation through the Evidence section. Our fact-checking team will review all submissions.',
-            timestamp: new Date(),
-            sender: 'system',
-          };
-        } else {
-          responseMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'information',
-            content: 'Thank you for your message. We have received your information and it has been logged in your case file. If additional evidence is needed, we will notify you.',
-            timestamp: new Date(),
-            sender: 'system',
-          };
+      // Create arbitration request
+      const requestData = createArbitrationRequest(content);
+
+      // Create system message for streaming response
+      const systemMessageId = (Date.now() + 1).toString();
+      let systemMessage: Message = {
+        id: systemMessageId,
+        type: 'information',
+        content: 'Processing your request...',
+        timestamp: new Date(),
+        sender: 'system',
+      };
+
+      // Add initial system message
+      setChatState(prev => ({
+        ...prev,
+        messages: [...prev.messages, systemMessage],
+      }));
+
+      // Start streaming
+      const response = await fetch(ARBITRATE_STREAM_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body available for streaming');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedContent = '';
+      let isFirstChunk = true;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.trim() && line.startsWith('data: ')) {
+              try {
+                const dataStr = line.slice(6); // Remove 'data: ' prefix
+                const data = JSON.parse(dataStr);
+
+                if (data.type === 'error') {
+                  throw new Error(data.message || 'Stream error');
+                }
+
+                if (data.type === 'complete') {
+                  setChatState(prev => ({ ...prev, isLoading: false }));
+                  return userMessage;
+                }
+
+                // Handle arbitration data chunks
+                if (data.reasoning || data.decision || data.analysis) {
+                  if (isFirstChunk) {
+                    streamedContent = '';
+                    isFirstChunk = false;
+                  }
+
+                  // Build the streamed content
+                  if (data.reasoning) {
+                    streamedContent += `**Reasoning:** ${data.reasoning}\n\n`;
+                  }
+                  
+                  if (data.analysis) {
+                    streamedContent += `**Analysis:** ${data.analysis}\n\n`;
+                  }
+
+                  if (data.decision) {
+                    streamedContent += `**Decision:** ${data.decision.verdict || data.decision}\n`;
+                    if (data.decision.confidence_score) {
+                      streamedContent += `**Confidence:** ${(data.decision.confidence_score * 100).toFixed(1)}%\n`;
+                    }
+                    streamedContent += '\n';
+                  }
+
+                  // Update the system message with streamed content
+                  setChatState(prev => ({
+                    ...prev,
+                    messages: prev.messages.map(msg => 
+                      msg.id === systemMessageId 
+                        ? { ...msg, content: streamedContent.trim() || 'Processing...' }
+                        : msg
+                    ),
+                  }));
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError);
+              }
+            }
+          }
         }
+      } finally {
+        reader.releaseLock();
+      }
 
-        setChatState(prev => ({
-          ...prev,
-          messages: [...prev.messages, responseMessage],
-        }));
-      }, 1000);
+      setChatState(prev => ({ ...prev, isLoading: false }));
+      return userMessage;
 
-      return newMessage;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
-      setChatState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+      setChatState(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage,
+        messages: prev.messages.map(msg => 
+          msg.sender === 'system' && msg.content === 'Processing your request...'
+            ? { ...msg, content: `Error: ${errorMessage}` }
+            : msg
+        )
+      }));
       throw err;
     }
   }, []);

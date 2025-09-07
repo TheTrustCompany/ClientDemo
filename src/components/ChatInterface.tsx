@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, FileText, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { Send, FileText, AlertTriangle, Clock, CheckCircle, Bot, User } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
 import type { Message } from '../types';
 
@@ -21,7 +21,6 @@ const ChatInterface: React.FC = () => {
     if (!inputValue.trim() || isLoading) return;
 
     try {
-      // Send as information message by default - API will determine actual type
       await sendMessage(inputValue.trim());
       setInputValue('');
     } catch (err) {
@@ -34,10 +33,13 @@ const ChatInterface: React.FC = () => {
   };
 
   const getMessageIcon = (message: Message) => {
+    if (message.sender === 'system') {
+      return <Bot className="message-type-icon system" />;
+    }
     if (message.type === 'evidence') {
       return <FileText className="message-type-icon evidence" />;
     }
-    return null;
+    return <User className="message-type-icon user" />;
   };
 
   const getMessageStatus = (message: Message) => {
@@ -50,11 +52,34 @@ const ChatInterface: React.FC = () => {
     return <CheckCircle className="message-status sent" />;
   };
 
+  const formatMessageContent = (content: string) => {
+    // Handle markdown-style formatting
+    const lines = content.split('\n');
+    return lines.map((line, index) => {
+      if (line.startsWith('**') && line.endsWith('**')) {
+        const text = line.slice(2, -2);
+        return (
+          <div key={index} className="message-section-header">
+            {text}
+          </div>
+        );
+      }
+      if (line.trim() === '') {
+        return <br key={index} />;
+      }
+      return (
+        <div key={index} className="message-line">
+          {line}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h2>Dispute Resolution Chat</h2>
-        <p>Submit your complaints and evidence for review</p>
+        <h2>AI Arbitration Chat</h2>
+        <p>Submit your disputes and complaints for AI-powered arbitration analysis</p>
       </div>
 
       {error && (
@@ -68,8 +93,8 @@ const ChatInterface: React.FC = () => {
         {messages.length === 0 ? (
           <div className="empty-chat">
             <FileText className="empty-icon" />
-            <h3>Start the conversation</h3>
-            <p>Submit your complaint or evidence to begin the dispute resolution process.</p>
+            <h3>Start an arbitration case</h3>
+            <p>Submit your complaint to begin AI-powered dispute resolution and receive expert arbitration analysis.</p>
           </div>
         ) : (
           <div className="messages-list">
@@ -89,7 +114,19 @@ const ChatInterface: React.FC = () => {
                     </span>
                   </div>
                   <div className="message-text">
-                    {message.content}
+                    {message.sender === 'system' ? (
+                      <div className="system-message-content">
+                        {formatMessageContent(message.content)}
+                        {isLoading && message.content === 'Processing your request...' && (
+                          <div className="streaming-indicator">
+                            <Clock className="streaming-icon" />
+                            <span>AI Arbiter is analyzing your case...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      message.content
+                    )}
                   </div>
                   {message.type === 'evidence' && (
                     <div className="evidence-notice">
@@ -113,7 +150,7 @@ const ChatInterface: React.FC = () => {
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Type your message or complaint..."
+            placeholder="Describe your dispute or complaint for AI arbitration analysis..."
             className="message-input"
             rows={3}
             disabled={isLoading}
@@ -134,8 +171,8 @@ const ChatInterface: React.FC = () => {
         <div className="message-help">
           <FileText className="help-icon" />
           <p>
-            Send your complaint or message. Our system will automatically determine if 
-            evidence is required and guide you through the submission process.
+            Describe your dispute or complaint. Our AI Arbiter will analyze your case 
+            using established policies and provide a detailed arbitration decision with reasoning.
           </p>
         </div>
       </form>
